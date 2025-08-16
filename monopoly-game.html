@@ -345,6 +345,7 @@
         }
         .player-card p {
             font-size: 0.9rem;
+            margin-bottom: 2px;
         }
         
         /* 題目 Modal 樣式 */
@@ -915,10 +916,10 @@
 
         // 玩家資料陣列
         const players = [
-            { id: 'player-1-token', position: 0, element: null, color: 'player-1', money: 150000, name: '玩家 1' },
-            { id: 'player-2-token', position: 0, element: null, color: 'player-2', money: 150000, name: '玩家 2' },
-            { id: 'player-3-token', position: 0, element: null, color: 'player-3', money: 150000, name: '玩家 3' },
-            { id: 'player-4-token', position: 0, element: null, color: 'player-4', money: 150000, name: '玩家 4' }
+            { id: 'player-1-token', position: 0, element: null, color: 'player-1', money: 150000, name: '玩家 1', properties: 0 },
+            { id: 'player-2-token', position: 0, element: null, color: 'player-2', money: 150000, name: '玩家 2', properties: 0 },
+            { id: 'player-3-token', position: 0, element: null, color: 'player-3', money: 150000, name: '玩家 3', properties: 0 },
+            { id: 'player-4-token', position: 0, element: null, color: 'player-4', money: 150000, name: '玩家 4', properties: 0 }
         ];
         let currentPlayerIndex = 0; // 目前玩家的索引 (從 0 開始)
 
@@ -1045,7 +1046,7 @@
             { 
                 name: "松江南京", price: 285000, owner: null, rent: 2850, quiz: [
                     { question: "松江南京站是哪兩條捷運路線的轉乘站？", options: ["松山新店線和中和新蘆線", "松山新店線和淡水信義線", "松山新店線和文湖線", "松山新店線和板南線"], correctAnswerIndex: 0, prize: 10000 },
-                    { question: "松江南京站周邊最著名的四面佛廟位於哪條路口？", options: ["松江路和南京東路", "松江路和長春路", "松江路和民生東路", "南京東路和伊通街"], correctAnswerIndex: 3, prize: 30000 },
+                    { question: "松江南京站周邊最著名的四面佛廟位於哪條路口？", options: ["松江路和南京東路", "松江路和長春路", "松江路和民生東路", "南京東路與伊通街"], correctAnswerIndex: 3, prize: 30000 },
                     { question: "松江南京站的站名，是取自哪兩條主要道路的交會點？", options: ["松江路與南京東路", "松江路與南京西路", "南京東路與新生南路", "南京東路與林森北路"], correctAnswerIndex: 0, prize: 50000 }
                 ]
             },
@@ -1140,7 +1141,8 @@
                 playerCard.className = `player-card${isActive}`;
                 playerCard.innerHTML = `
                     <h4 class="text-sm font-semibold">${player.name}</h4>
-                    <p class="text-xs">資產: <span id="player-${index + 1}-money">$${player.money.toLocaleString()}</span></p>
+                    <p class="text-xs">資產: $${player.money.toLocaleString()}</p>
+                    <p class="text-xs">地產: ${player.properties} 塊</p>
                 `;
                 playerInfoContainer.appendChild(playerCard);
             });
@@ -1383,6 +1385,7 @@
                 if (currentPlayer.money >= propertyPrice) {
                     currentPlayer.money -= propertyPrice;
                     landedSquare.owner = currentPlayerIndex; // 設定地產主人
+                    currentPlayer.properties++; // 增加玩家的地產數量
                     updateSquareOwnershipDisplay(currentLandedSquareIndex, currentPlayerIndex);
                     updatePlayerInfoDisplay();
                     purchaseModal.style.display = 'none';
