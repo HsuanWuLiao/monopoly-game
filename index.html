@@ -1,0 +1,1562 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>捷運大富翁</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 設定 Inter 字體 */
+        body {
+            font-family: "Inter", sans-serif;
+            background-color: #f0f2f5; /* 淺灰色背景 */
+            display: flex;
+            flex-direction: column; /* 垂直排版，用於小螢幕 */
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* 遊戲主容器，用於大螢幕的左右佈局 */
+        .game-main-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        /* 媒體查詢：當螢幕寬度大於 768px 時，改為水平佈局 */
+        @media (min-width: 768px) {
+            .game-main-container {
+                flex-direction: row;
+                align-items: flex-start;
+                justify-content: center;
+            }
+        }
+
+        /* 遊戲板容器 */
+        .game-board-container {
+            display: grid;
+            grid-template-columns: repeat(8, 80px); /* 8 列，每列 80px */
+            grid-template-rows: repeat(8, 80px); /* 8 行，每行 80px */
+            width: fit-content; /* 根據內容調整寬度 */
+            height: fit-content; /* 根據內容調整高度 */
+            border: 4px solid #333; /* 深色邊框 */
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2); /* 陰影效果 */
+            border-radius: 15px; /* 圓角 */
+            overflow: hidden; /* 防止內容溢出 */
+            background-color: #e0e0e0; /* 遊戲板背景色 */
+            position: relative; /* 設置為絕對定位的參考點 */
+        }
+
+        /* 遊戲板格子樣式 */
+        .square {
+            width: 80px;
+            height: 80px;
+            border: 1px solid #ccc; /* 淺灰色邊框 */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.75rem; /* 小字體 */
+            text-align: center;
+            background-color: #fff; /* 格子背景色 */
+            box-sizing: border-box; /* 包含邊框在內的尺寸 */
+            position: relative; /* 用於定位棋子 */
+            padding: 5px; /* 增加內邊距 */
+        }
+        
+        .square-name {
+            font-weight: bold;
+            font-size: 0.8rem;
+            margin-bottom: 2px;
+        }
+
+        .square-price {
+            font-size: 0.65rem;
+            color: #6c757d; /* 灰色 */
+        }
+
+        /* 特殊格子樣式 (只用於「機會」方格) */
+        .special-square {
+            background-color: #f8d7da; /* 淺紅色背景 */
+            font-weight: bold; /* 粗體 */
+            font-size: 0.85rem; /* 稍大字體 */
+        }
+        .special-square .square-name {
+             margin-bottom: 0;
+        }
+
+        /* 玩家擁有地產的樣式 */
+        .owned-by-player-1 { border: 4px solid #ef4444; }
+        .owned-by-player-2 { border: 4px solid #3b82f6; }
+        .owned-by-player-3 { border: 4px solid #22c55e; }
+        .owned-by-player-4 { border: 4px solid #f59e0b; }
+
+        /* 遊戲板邊緣格子佈局 for 8x8 grid (28 total squares) */
+        /* 頂部邊緣 (8 個格子) */
+        #square-0 { grid-area: 1 / 1 / 2 / 2; }
+        #square-1 { grid-area: 1 / 2 / 2 / 3; }
+        #square-2 { grid-area: 1 / 3 / 2 / 4; }
+        #square-3 { grid-area: 1 / 4 / 2 / 5; }
+        #square-4 { grid-area: 1 / 5 / 2 / 6; }
+        #square-5 { grid-area: 1 / 6 / 2 / 7; }
+        #square-6 { grid-area: 1 / 7 / 2 / 8; }
+        #square-7 { grid-area: 1 / 8 / 2 / 9; } /* 右上角 */
+
+        /* 右側邊緣 (7 個格子) */
+        #square-8 { grid-area: 2 / 8 / 3 / 9; }
+        #square-9 { grid-area: 3 / 8 / 4 / 9; }
+        #square-10 { grid-area: 4 / 8 / 5 / 9; }
+        #square-11 { grid-area: 5 / 8 / 6 / 9; }
+        #square-12 { grid-area: 6 / 8 / 7 / 9; }
+        #square-13 { grid-area: 7 / 8 / 8 / 9; }
+        #square-14 { grid-area: 8 / 8 / 9 / 9; } /* 右下角 */
+
+        /* 底部邊緣 (8 個格子) */
+        #square-15 { grid-area: 8 / 7 / 9 / 8; }
+        #square-16 { grid-area: 8 / 6 / 9 / 7; }
+        #square-17 { grid-area: 8 / 5 / 9 / 6; }
+        #square-18 { grid-area: 8 / 4 / 9 / 5; }
+        #square-19 { grid-area: 8 / 3 / 9 / 4; }
+        #square-20 { grid-area: 8 / 2 / 9 / 3; }
+        #square-21 { grid-area: 8 / 1 / 9 / 2; } /* 左下角 */
+
+        /* 左側邊緣 (6 個格子) */
+        #square-22 { grid-area: 7 / 1 / 8 / 2; }
+        #square-23 { grid-area: 6 / 1 / 7 / 2; }
+        #square-24 { grid-area: 5 / 1 / 6 / 2; }
+        #square-25 { grid-area: 4 / 1 / 5 / 2; }
+        #square-26 { grid-area: 3 / 1 / 4 / 2; }
+        #square-27 { grid-area: 2 / 1 / 3 / 2; }
+
+
+        /* 遊戲中心區域 */
+        .game-center {
+            grid-area: 2 / 2 / 8 / 8; /* 佔據中間區域 (從第2行/列到第7行/列) */
+            background-color: #f0f0f0; /* 中心背景色 */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #555;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        /* 玩家棋子樣式 */
+        .player-token {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%; /* 圓形 */
+            position: absolute; /* 相對於格子定位 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            color: white;
+            transition: all 0.5s ease-in-out; /* 平滑移動動畫 */
+            z-index: 10; /* 確保棋子在最上層 */
+            border: 2px solid rgba(255, 255, 255, 0.7); /* 白色邊框 */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3); /* 陰影 */
+        }
+
+        /* 不同玩家棋子的顏色 */
+        .player-1 { background-color: #ef4444; } /* 紅色 */
+        .player-2 { background-color: #3b82f6; } /* 藍色 */
+        .player-3 { background-color: #22c55e; } /* 綠色 */
+        .player-4 { background-color: #f59e0b; } /* 黃色 */
+
+        /* 骰子顯示樣式 */
+        .dice-display {
+            font-size: 2.5rem; /* 大字體 */
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            background-color: #fff;
+            padding: 10px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        /* 按鈕樣式 */
+        .action-button {
+            padding: 12px 25px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: white;
+            background-color: #4f46e5; /* 紫色 */
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+            letter-spacing: 1px;
+        }
+
+        .action-button:hover {
+            background-color: #6366f1; /* 淺紫色 */
+            transform: translateY(-2px);
+        }
+
+        .action-button:active {
+            background-color: #4338ca; /* 更深紫色 */
+            transform: translateY(0);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        .action-button:disabled {
+            background-color: #a0aec0; /* 灰色 */
+            cursor: not-allowed;
+        }
+
+        /* 按鈕氣泡效果 */
+        .action-button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            transition: width 0.4s ease, height 0.4s ease, opacity 0.4s ease;
+        }
+
+        .action-button:active::before {
+            width: 200%;
+            height: 200%;
+            opacity: 1;
+        }
+
+        /* 訊息提示框 */
+        #message-box {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            visibility: hidden; /* 確保初始狀態是隱藏的 */
+        }
+        #message-box.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* 聊天室樣式 */
+        .chat-container {
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-top: 20px;
+            width: 100%;
+            max-width: 400px; /* 限制聊天室寬度 */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-messages {
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 15px;
+            background-color: #f9f9f9;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .chat-input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex-grow: 1;
+            padding: 10px 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        .chat-input:focus {
+            border-color: #4f46e5;
+        }
+
+        .chat-send-button {
+            padding: 10px 20px;
+            background-color: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+
+        .chat-send-button:hover {
+            background-color: #6366f1;
+        }
+        /* 玩家資訊顯示 */
+        .player-info {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+            width: 100%;
+            max-width: 650px;
+        }
+        .player-card {
+            background-color: white;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .player-card.active {
+            border: 2px solid #4f46e5;
+            box-shadow: 0 4px 10px rgba(79, 70, 229, 0.4);
+        }
+        .player-card h4 {
+            font-weight: bold;
+            font-size: 1rem;
+            margin-bottom: 5px;
+        }
+        .player-card p {
+            font-size: 0.9rem;
+            margin-bottom: 2px;
+        }
+        
+        /* 題目 Modal 樣式 */
+        #quiz-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            visibility: hidden; /* 確保初始狀態是隱藏的 */
+        }
+
+        #quiz-modal.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .quiz-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 600px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.5s ease-out forwards;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .quiz-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #4f46e5;
+            margin-bottom: 20px;
+        }
+
+        .quiz-question {
+            font-size: 1.2rem;
+            margin-bottom: 5px;
+            line-height: 1.5;
+            font-weight: bold;
+        }
+
+        .quiz-prize {
+            font-size: 1rem;
+            color: #10b981; /* 綠色 */
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .answer-buttons-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .answer-button {
+            padding: 15px;
+            background-color: #e2e8f0;
+            border: 2px solid transparent;
+            border-radius: 10px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            width: 100%;
+        }
+        .answer-button:hover {
+            background-color: #cbd5e1;
+        }
+        .answer-button.correct {
+            background-color: #22c55e;
+            color: white;
+            border-color: #16a34a;
+        }
+        .answer-button.incorrect {
+            background-color: #ef4444;
+            color: white;
+            border-color: #dc2626;
+        }
+        .answer-button:disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        
+        .quiz-action-buttons {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 15px;
+            gap: 10px;
+        }
+
+        .quiz-skip-button {
+            padding: 10px 20px;
+            background-color: #d1d5db; /* 淺灰色 */
+            color: #4b5563; /* 深灰色文字 */
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        .quiz-skip-button:hover {
+            background-color: #9ca3af;
+        }
+
+        /* 購地 Modal */
+        #purchase-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none; /* 預設隱藏 */
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        .purchase-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 450px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+        .purchase-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .purchase-info {
+            font-size: 1.0rem;
+            margin-bottom: 10px;
+        }
+        .purchase-price {
+            font-size: 1.2rem;
+            color: #10b981;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .purchase-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        .purchase-button {
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .buy-button {
+            background-color: #22c55e;
+            color: white;
+        }
+        .buy-button:hover { background-color: #16a34a; }
+        .cancel-button {
+            background-color: #d1d5db;
+            color: #4b5563;
+        }
+        .cancel-button:hover { background-color: #9ca3af; }
+
+
+        /* 機會卡 Modal 樣式 */
+        #chance-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            visibility: hidden;
+        }
+
+        #chance-modal.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .chance-content {
+            background: linear-gradient(135deg, #f5f5f5, #e0e0e0);
+            border: 4px solid #ef4444; /* 紅色邊框 */
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 450px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            animation: cardFlip 0.8s ease-out forwards;
+            position: relative;
+        }
+
+        @keyframes cardFlip {
+            0% { transform: scale(0.5) rotateY(90deg); opacity: 0; }
+            80% { transform: scale(1.1) rotateY(-10deg); opacity: 1; }
+            100% { transform: scale(1) rotateY(0deg); }
+        }
+
+        .chance-title {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #ef4444;
+            margin-bottom: 20px;
+        }
+        .chance-text {
+            font-size: 1.2rem;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        .chance-ok-button {
+            padding: 12px 30px;
+            background-color: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .chance-ok-button:hover {
+            background-color: #dc2626;
+        }
+        /* 響應式設計 */
+        @media (max-width: 768px) {
+            .game-board-container {
+                grid-template-columns: repeat(8, 60px); /* 調整格子大小 */
+                grid-template-rows: repeat(8, 60px);
+            }
+            .square {
+                width: 60px;
+                height: 60px;
+                padding: 3px;
+            }
+            .square-name {
+                font-size: 0.7rem;
+            }
+            .square-price {
+                font-size: 0.55rem;
+            }
+            .special-square {
+                font-size: 0.7rem;
+            }
+            .player-token {
+                width: 25px;
+                height: 25px;
+                font-size: 0.8rem;
+            }
+            .dice-display {
+                font-size: 2rem;
+            }
+            .action-button {
+                padding: 10px 20px;
+                font-size: 1rem;
+            }
+            .player-info {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .quiz-content {
+                padding: 20px;
+            }
+            .quiz-question {
+                font-size: 1rem;
+            }
+            .chance-text {
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .game-board-container {
+                grid-template-columns: repeat(8, 45px); /* 再次調整格子大小 */
+                grid-template-rows: repeat(8, 45px);
+            }
+            .square {
+                width: 45px;
+                height: 45px;
+                padding: 2px;
+            }
+            .square-name {
+                font-size: 0.6rem;
+            }
+            .square-price {
+                font-size: 0.45rem;
+            }
+            .special-square {
+                font-size: 0.6rem;
+            }
+            .player-token {
+                width: 20px;
+                height: 20px;
+                font-size: 0.7rem;
+            }
+            .dice-display {
+                font-size: 1.5rem;
+            }
+            .action-button {
+                padding: 8px 15px;
+                font-size: 0.9rem;
+            }
+            .player-info {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="flex flex-col items-center p-4 bg-gray-100 rounded-lg shadow-xl">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">捷運大富翁</h1>
+        <div class="player-info">
+            <!-- 玩家資訊卡片將在這裡動態生成 -->
+        </div>
+
+        <div class="game-main-container mt-6">
+            <div class="game-board-container">
+                <!-- 遊戲板格子，共 28 個邊緣格子 + 1 個中心區域 -->
+                <!-- 頂部邊緣 (8 個格子) -->
+                <div id="square-0" class="square" data-name="頭前庄" data-price="250000">
+                    <span class="square-name">頭前庄</span>
+                    <span class="square-price">$250,000</span>
+                </div>
+                <div id="square-1" class="square" data-name="新埔民生" data-price="270000">
+                    <span class="square-name">新埔民生</span>
+                    <span class="square-price">$270,000</span>
+                </div>
+                <div id="square-2" class="square" data-name="板橋" data-price="300000">
+                    <span class="square-name">板橋</span>
+                    <span class="square-price">$300,000</span>
+                </div>
+                <div id="square-3" class="square special-square" data-name="機會">
+                    <span class="square-name">機會</span>
+                </div>
+                <div id="square-4" class="square" data-name="板新" data-price="220000">
+                    <span class="square-name">板新</span>
+                    <span class="square-price">$220,000</span>
+                </div>
+                <div id="square-5" class="square special-square" data-name="機會">
+                    <span class="square-name">機會</span>
+                </div>
+                <div id="square-6" class="square" data-name="中原" data-price="180000">
+                    <span class="square-name">中原</span>
+                    <span class="square-price">$180,000</span>
+                </div>
+                <div id="square-7" class="square" data-name="景安" data-price="260000">
+                    <span class="square-name">景安</span>
+                    <span class="square-price">$260,000</span>
+                </div>
+
+                <!-- 右側邊緣 (7 個格子) -->
+                <div id="square-8" class="square" data-name="橋和" data-price="190000">
+                    <span class="square-name">橋和</span>
+                    <span class="square-price">$190,000</span>
+                </div>
+                <div id="square-9" class="square" data-name="中和" data-price="210000">
+                    <span class="square-name">中和</span>
+                    <span class="square-price">$210,000</span>
+                </div>
+                <div id="square-10" class="square special-square" data-name="機會">
+                    <span class="square-name">機會</span>
+                </div>
+                <div id="square-11" class="square" data-name="永安市場" data-price="280000">
+                    <span class="square-name">永安市場</span>
+                    <span class="square-price">$280,000</span>
+                </div>
+                <div id="square-12" class="square" data-name="頂溪" data-price="290000">
+                    <span class="square-name">頂溪</span>
+                    <span class="square-price">$290,000</span>
+                </div>
+                <div id="square-13" class="square" data-name="古亭" data-price="300000">
+                    <span class="square-name">古亭</span>
+                    <span class="square-price">$300,000</span>
+                </div>
+                <div id="square-14" class="square" data-name="東門" data-price="300000">
+                    <span class="square-name">東門</span>
+                    <span class="square-price">$300,000</span>
+                </div>
+
+                <!-- 底部邊緣 (8 個格子) -->
+                <div id="square-15" class="square" data-name="忠孝新生" data-price="295000">
+                    <span class="square-name">忠孝新生</span>
+                    <span class="square-price">$295,000</span>
+                </div>
+                <div id="square-16" class="square" data-name="松江南京" data-price="285000">
+                    <span class="square-name">松江南京</span>
+                    <span class="square-price">$285,000</span>
+                </div>
+                <div id="square-17" class="square special-square" data-name="機會">
+                    <span class="square-name">機會</span>
+                </div>
+                <div id="square-18" class="square" data-name="行天宮" data-price="255000">
+                    <span class="square-name">行天宮</span>
+                    <span class="square-price">$255,000</span>
+                </div>
+                <div id="square-19" class="square special-square" data-name="機會">
+                    <span class="square-name">機會</span>
+                </div>
+                <div id="square-20" class="square" data-name="中山國小" data-price="245000">
+                    <span class="square-name">中山國小</span>
+                    <span class="square-price">$245,000</span>
+                </div>
+                <div id="square-21" class="square" data-name="民權西路" data-price="235000">
+                    <span class="square-name">民權西路</span>
+                    <span class="square-price">$235,000</span>
+                </div>
+
+                <!-- 左側邊緣 (6 個格子) -->
+                <div id="square-22" class="square" data-name="大橋頭" data-price="200000">
+                    <span class="square-name">大橋頭</span>
+                    <span class="square-price">$200,000</span>
+                </div>
+                <div id="square-23" class="square" data-name="臺北橋" data-price="170000">
+                    <span class="square-name">臺北橋</span>
+                    <span class="square-price">$170,000</span>
+                </div>
+                <div id="square-24" class="square special-square" data-name="機會">
+                    <span class="square-name">機會</span>
+                </div>
+                <div id="square-25" class="square" data-name="菜寮" data-price="150000">
+                    <span class="square-name">菜寮</span>
+                    <span class="square-price">$150,000</span>
+                </div>
+                <div id="square-26" class="square" data-name="三重" data-price="160000">
+                    <span class="square-name">三重</span>
+                    <span class="square-price">$160,000</span>
+                </div>
+                <div id="square-27" class="square" data-name="先嗇宮" data-price="150000">
+                    <span class="square-name">先嗇宮</span>
+                    <span class="square-price">$150,000</span>
+                </div>
+
+                <!-- 遊戲中心區域 -->
+                <div class="game-center">
+                    <p>捷運大富翁</p>
+                    <p>Monopoly</p>
+                    <!-- 童軍徽 Logo -->
+                    <img src="https://www.scout.org.tw/upload/autopage/202112231126322k89v.jpg" alt="童軍徽" class="rounded-lg mt-4 w-32 h-32 object-contain">
+                </div>
+
+                <!-- 玩家棋子 -->
+                <div id="player-1-token" class="player-token player-1">P1</div>
+                <div id="player-2-token" class="player-token player-2">P2</div>
+                <div id="player-3-token" class="player-token player-3">P3</div>
+                <div id="player-4-token" class="player-token player-4">P4</div>
+            </div>
+
+            <!-- 右側控制區容器 -->
+            <div class="flex flex-col items-center mt-6 md:mt-0">
+                <div class="flex flex-col items-center">
+                    <div id="dice-result" class="dice-display">點擊擲骰子</div>
+                    <button id="roll-dice-button" class="action-button">擲骰子</button>
+                    <div class="flex items-center mt-4">
+                        <input type="checkbox" id="rent-toggle" class="h-5 w-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" checked>
+                        <label for="rent-toggle" class="ml-2 block text-sm font-medium text-gray-700">啟用支付租金</label>
+                    </div>
+                </div>
+                
+                <!-- 聊天室容器 -->
+                <div class="chat-container">
+                    <h3 class="text-lg font-bold mb-3 text-gray-800">遊戲聊天室 (本地模擬)</h3>
+                    <div id="chat-messages" class="chat-messages">
+                        <!-- 聊天訊息將顯示在這裡 -->
+                        <p class="text-gray-600">歡迎加入遊戲！</p>
+                    </div>
+                    <div class="chat-input-group">
+                        <input type="text" id="chat-input" placeholder="輸入訊息..." class="chat-input">
+                        <button id="send-chat-button" class="chat-send-button">傳送</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 訊息提示框 -->
+    <div id="message-box"></div>
+
+    <!-- 題目 Modal -->
+    <div id="quiz-modal">
+        <div class="quiz-content">
+            <div class="quiz-title">答題賺獎金！</div>
+            <p id="quiz-question" class="quiz-question">這裡會顯示題目。</p>
+            <p id="quiz-prize" class="quiz-prize"></p>
+            <div id="answer-buttons" class="answer-buttons-container">
+                <!-- 答案按鈕會在這裡動態生成 -->
+            </div>
+            <div class="quiz-action-buttons">
+                <button id="skip-quiz-button" class="quiz-skip-button">跳過此題</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 購地 Modal -->
+    <div id="purchase-modal">
+        <div class="purchase-content">
+            <h3 id="purchase-title" class="purchase-title"></h3>
+            <p id="purchase-info" class="text-base mb-4 purchase-info"></p>
+            <p id="purchase-price" class="purchase-price"></p>
+            <div class="purchase-buttons">
+                <button id="buy-button" class="purchase-button buy-button">購買</button>
+                <button id="cancel-button" class="purchase-button cancel-button">放棄</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- 機會卡 Modal -->
+    <div id="chance-modal">
+        <div class="chance-content">
+            <div class="chance-title">機會</div>
+            <p id="chance-text" class="chance-text">這裡會顯示機會卡內容。</p>
+            <button id="chance-ok-button" class="chance-ok-button">確定</button>
+        </div>
+    </div>
+
+    <script>
+        // 獲取 DOM 元素
+        const diceResultDisplay = document.getElementById('dice-result');
+        const rollDiceButton = document.getElementById('roll-dice-button');
+        const messageBox = document.getElementById('message-box');
+        const chatMessages = document.getElementById('chat-messages');
+        const chatInput = document.getElementById('chat-input');
+        const sendChatButton = document.getElementById('send-chat-button');
+        const playerInfoContainer = document.querySelector('.player-info');
+
+        // Modal 元素
+        const quizModal = document.getElementById('quiz-modal');
+        const quizQuestionText = document.getElementById('quiz-question');
+        const quizPrizeText = document.getElementById('quiz-prize');
+        const answerButtonsContainer = document.getElementById('answer-buttons');
+        const skipQuizButton = document.getElementById('skip-quiz-button');
+        const chanceModal = document.getElementById('chance-modal');
+        const chanceText = document.getElementById('chance-text');
+        const chanceOkButton = document.getElementById('chance-ok-button');
+
+        const purchaseModal = document.getElementById('purchase-modal');
+        const purchaseTitle = document.getElementById('purchase-title');
+        const purchaseInfo = document.getElementById('purchase-info');
+        const purchasePrice = document.getElementById('purchase-price');
+        const buyButton = document.getElementById('buy-button');
+        const cancelButton = document.getElementById('cancel-button');
+        
+        // 租金開關元素
+        const rentToggle = document.getElementById('rent-toggle');
+        let isRentEnabled = rentToggle.checked;
+
+        // 遊戲板格子總數
+        const totalSquares = 28; // 維持 28 格
+
+        // 玩家資料陣列
+        const players = [
+            { id: 'player-1-token', position: 0, element: null, color: 'player-1', money: 150000, name: '玩家 1', properties: 0 },
+            { id: 'player-2-token', position: 0, element: null, color: 'player-2', money: 150000, name: '玩家 2', properties: 0 },
+            { id: 'player-3-token', position: 0, element: null, color: 'player-3', money: 150000, name: '玩家 3', properties: 0 },
+            { id: 'player-4-token', position: 0, element: null, color: 'player-4', money: 150000, name: '玩家 4', properties: 0 }
+        ];
+        let currentPlayerIndex = 0; // 目前玩家的索引 (從 0 開始)
+
+        // 20 張機會卡資料陣列
+        const chanceCards = [
+            { text: "政府發放三倍券，獲得獎金 $20,000", type: "gainMoney", value: 20000 },
+            { text: "股票大漲，獲得 $15,000", type: "gainMoney", value: 15000 },
+            { text: "銀行利息收入，獲得 $5,000", type: "gainMoney", value: 5000 },
+            { text: "你在捷運上撿到錢包，獲得 $10,000", type: "gainMoney", value: 10000 },
+            { text: "生日禮物，收到 $8,000", type: "gainMoney", value: 8000 },
+            { text: "捷運卡遺失，補辦花費 $3,000", type: "loseMoney", value: 3000 },
+            { text: "繳納房產稅，支付 $12,000", type: "loseMoney", value: 12000 },
+            { text: "信用卡帳單到期，支付 $18,000", type: "loseMoney", value: 18000 },
+            { text: "買了一件新衣服，支付 $7,000", type: "loseMoney", value: 7000 },
+            { text: "緊急維修費用，支付 $6,000", type: "loseMoney", value: 6000 },
+            { text: "參加社團活動，向每位玩家支付 $2,000", type: "payPerPlayer", value: 2000 },
+            { text: "請客喝咖啡，向每位玩家支付 $1,000", type: "payPerPlayer", value: 1000 },
+            { text: "你被選為理事長，每位玩家付給你 $5,000", type: "collectFromPlayers", value: 5000 },
+            { text: "你的提案獲得贊助，每位玩家付給你 $3,000", type: "collectFromPlayers", value: 3000 },
+            { text: "前進到『板橋站』(第 2 格)", type: "moveToPosition", value: 2 },
+            { text: "前進到『東門站』(第 14 格)", type: "moveToPosition", value: 14 },
+            { text: "前進到『民權西路站』(第 21 格)", type: "moveToPosition", value: 21 },
+            { text: "前進到『頭前庄』(第 0 格)，並領取 $20,000", type: "moveToPositionAndGain", value: 0, prize: 20000 },
+            { text: "返回三格", type: "moveBack", value: 3 },
+            { text: "前進五格", type: "moveForward", value: 5 }
+        ];
+        
+        // 遊戲板格子資料陣列 (含名稱、價格、問答與機會卡資訊)
+        const squaresData = [
+            { 
+                name: "頭前庄", price: 250000, owner: null, rent: 2500, quiz: [
+                    { question: "頭前庄站周邊的知名宮廟，供奉哪位神明？", options: ["媽祖", "關公", "地藏王菩薩", "保生大帝"], correctAnswerIndex: 3, prize: 10000 },
+                    { question: "頭前庄站位於新莊區和哪一區的交界？", options: ["板橋區", "三重區", "泰山區", "樹林區"], correctAnswerIndex: 0, prize: 30000 },
+                    { question: "頭前庄站的站名由來與哪一條河的河岸聚落有關？", options: ["新店溪", "大漢溪", "淡水河", "基隆河"], correctAnswerIndex: 1, prize: 50000 }
+                ]
+            },
+            { 
+                name: "新埔民生", price: 270000, owner: null, rent: 2700, quiz: [
+                    { question: "新埔民生站是哪兩條捷運路線的轉乘站？", options: ["板南線和環狀線", "中和新蘆線和環狀線", "萬大線和環狀線", "三鶯線和環狀線"], correctAnswerIndex: 0, prize: 10000 },
+                    { question: "新埔民生站以附近哪條主要道路命名？", options: ["民生路", "文化路", "中山路", "板新路"], correctAnswerIndex: 0, prize: 30000 },
+                    { question: "新埔民生站與板橋車站相隔幾站？", options: ["1站", "2站", "3站", "4站"], correctAnswerIndex: 1, prize: 50000 }
+                ]
+            },
+            { 
+                name: "板橋", price: 300000, owner: null, rent: 3000, quiz: [
+                    { question: "板橋車站是哪三種交通工具的共構車站？", options: ["高鐵、台鐵、捷運", "高鐵、公車、捷運", "台鐵、公車、捷運", "高鐵、台鐵、公車"], correctAnswerIndex: 0, prize: 10000 },
+                    { question: "板橋車站周邊的著名地標，也是新北市政府所在地，請問是哪一棟？", options: ["新北耶誕城", "板橋大遠百", "Mega City板橋大遠百", "板橋車站大樓"], correctAnswerIndex: 1, prize: 30000 },
+                    { question: "每年年底舉辦的新北市歡樂耶誕城活動，主會場通常位於哪個廣場？", options: ["站前廣場", "市民廣場", "萬坪公園", "體育場"], correctAnswerIndex: 1, prize: 50000 }
+                ]
+            },
+            { name: "機會", price: null, owner: null, cardType: "chance" }, // 3
+            { 
+                name: "板新", price: 220000, owner: null, rent: 2200, quiz: [
+                    { question: "板新站的命名來源，是結合了哪兩座橋樑的名稱？", options: ["板橋、新莊", "板橋、新海", "板橋、新店", "板橋、新埔"], correctAnswerIndex: 1, prize: 10000 },
+                    { question: "板新站周邊最著名的綠地公園是？", options: ["四維公園", "萬板公園", "板橋435藝文特區", "新北市立體育場"], correctAnswerIndex: 0, prize: 30000 },
+                    { question: "板新站所在的板橋區，曾被稱為『枋橋』，其原因與哪種建築材料有關？", options: ["磚塊", "石板", "木板", "泥土"], correctAnswerIndex: 2, prize: 50000 }
+                ]
+            },
+            { name: "機會", price: null, owner: null, cardType: "chance" }, // 5
+            { 
+                name: "中原", price: 180000, owner: null, rent: 1800, quiz: [
+                    { question: "中原站位於新北市哪一個行政區？", options: ["新莊區", "板橋區", "中和區", "土城區"], correctAnswerIndex: 1, prize: 10000 },
+                    { question: "中原站周邊最著名的學校是？", options: ["中原國中", "板橋國小", "江翠國中", "文聖國小"], correctAnswerIndex: 0, prize: 30000 },
+                    { question: "中原站的命名與附近哪個地名或路名有關？", options: ["中原路", "中正路", "民生路", "中山路"], correctAnswerIndex: 0, prize: 50000 }
+                ]
+            },
+            { 
+                name: "景安", price: 260000, owner: null, rent: 2600, quiz: [
+                    { question: "景安站是哪兩條捷運路線的轉乘站？", options: ["環狀線和中和新蘆線", "環狀線和板南線", "松山新店線和環狀線", "中和新蘆線和板南線"], correctAnswerIndex: 0, prize: 10000 },
+                    { question: "景安站的站名由來與附近哪條路名或地名有關？", options: ["景新街和安平路", "景平路和安樂路", "景平路和安和路", "景安路和安和路"], correctAnswerIndex: 2, prize: 30000 },
+                    { question: "景安站附近哪條主要道路以「景」字開頭，連接中和與新店？", options: ["景平路", "景新街", "景安路", "景文路"], correctAnswerIndex: 0, prize: 50000 }
+                ]
+            },
+            { 
+                name: "橋和", price: 190000, owner: null, rent: 1900, quiz: [
+                    { question: "橋和站的命名由來，是結合了哪兩座橋樑的名稱？", options: ["大漢橋與中和橋", "華江橋與萬板大橋", "華中橋與永福橋", "永福橋與中正橋"], correctAnswerIndex: 0, prize: 10000 },
+                    { question: "橋和站位於新北市哪兩個行政區的交界？", options: ["中和區和板橋區", "永和區和中和區", "新店區和中和區", "板橋區和土城區"], correctAnswerIndex: 0, prize: 30000 },
+                    { question: "橋和站附近曾是工業區，現已轉型為科技園區，請問該園區的名稱是？", options: ["遠東科技園區", "中和環球科技園區", "雙和科技園區", "中和軟體園區"], correctAnswerIndex: 3, prize: 50000 }
+                ]
+            },
+            { 
+                name: "中和", price: 210000, owner: null, rent: 2100, quiz: [
+                    { question: "中和站附近最著名的百貨公司是？", options: ["遠東百貨", "環球購物中心", "比漾廣場", "太平洋SOGO百貨"], correctAnswerIndex: 1, prize: 10000 },
+                    { question: "中和站是哪兩條捷運路線的轉乘站？", options: ["環狀線和萬大線", "環狀線和中和新蘆線", "松山新店線和環狀線", "中和新蘆線和萬大線"], correctAnswerIndex: 0, prize: 30000 },
+                    { question: "中和站的站名，是取自哪座公園的名稱？", options: ["中和公園", "錦和公園", "員山公園", "四號公園"], correctAnswerIndex: 1, prize: 50000 }
+                ]
+            },
+            { name: "機會", price: null, owner: null, cardType: "chance" }, // 10
+            { 
+                name: "永安市場", price: 280000, owner: null, rent: 2800, quiz: [
+                    { question: "永安市場站位於哪一條捷運線上？", options: ["松山新店線", "板南線", "淡水信義線", "中和新蘆線"], correctAnswerIndex: 0, prize: 10000 },
+                    { question: "永安市場站以附近哪一座公園命名？", options: ["八二三紀念公園", "四號公園", "仁愛公園", "國父紀念館"], correctAnswerIndex: 1, prize: 30000 },
+                    { question: "永安市場站周邊的知名夜市是？", options: ["樂華夜市", "南雅夜市", "興南夜市", "永和夜市"], correctAnswerIndex: 0, prize: 50000 }
+                ]
+            },
+            { 
+                name: "頂溪", price: 290000, owner: null, rent: 2900, quiz: [
+                    { question: "頂溪站位於哪一條捷運線上？", options: ["松山新店線", "板南線", "淡水信義線", "中和新蘆線"], correctAnswerIndex: 0, prize: 10000 },
+                    { question: "頂溪站周邊最著名的景點是？", options: ["樂華夜市", "中正紀念堂", "永和豆漿大王", "永和中正橋"], correctAnswerIndex: 2, prize: 30000 },
+                    { question: "頂溪站的站名由來，與清朝時期何種農田水利設施有關？", options: ["灌溉渠", "排水溝", "水圳", "河堤"], correctAnswerIndex: 2, prize: 50000 }
+                ]
+            },
+            { 
+                name: "古亭", price: 300000, owner: null, rent: 3000, quiz: [
+                    { question: "古亭站是哪兩條捷運路線的轉乘站？", options: ["松山新店線和中和新蘆線", "松山新店線和淡水信義線", "中和新蘆線和淡水信義線", "板南線和松山新店線"], correctAnswerIndex: 0, prize: 10000 },
+                    { question: "古亭站附近最著名的學術單位是？", options: ["國立臺灣大學", "國立臺灣師範大學", "國立政治大學", "臺北市立大學"], correctAnswerIndex: 1, prize: 30000 },
+                    { question: "古亭站的站名由來與哪一項古代刑具或軍事設施有關？", options: ["刑場", "鼓亭", "古亭畚", "關卡"], correctAnswerIndex: 2, prize: 50000 }
+                ]
+            },
+            { 
+                name: "東門", price: 300000, owner: null, rent: 3000, quiz: [
+                    { question: "東門站是哪兩條捷運路線的轉乘站？", options: ["中和新蘆線和淡水信義線", "松山新店線和中和新蘆線", "淡水信義線和板南線", "文湖線和淡水信義線"], correctAnswerIndex: 0, prize: 10000 },
+                    { question: "東門站附近最著名的夜市是？", options: ["士林夜市", "寧夏夜市", "臨江街夜市", "永康街夜市"], correctAnswerIndex: 3, prize: 30000 },
+                    { question: "東門站所在的地區，是日治時期台北市的哪一個行政區？", options: ["大安區", "中正區", "信義區", "城中區"], correctAnswerIndex: 1, prize: 50000 }
+                ]
+            },
+            { 
+                name: "忠孝新生", price: 295000, owner: null, rent: 2950, quiz: [
+                    { question: "忠孝新生站是哪兩條捷運路線的轉乘站？", options: ["板南線和文湖線", "板南線和松山新店線", "板南線和中和新蘆線", "板南線和淡水信義線"], correctAnswerIndex: 2, prize: 10000 },
+                    { question: "忠孝新生站附近最著名的藝文園區是？", options: ["松山文創園區", "華山1914文化創意產業園區", "華山藝文中心", "台北當代藝術館"], correctAnswerIndex: 1, prize: 30000 },
+                    { question: "忠孝新生站的站名由來與哪兩條主要道路的交會點有關？", options: ["忠孝東路和新生南路", "忠孝東路和新生北路", "忠孝西路和新生南路", "忠孝西路和新生北路"], correctAnswerIndex: 0, prize: 50000 }
+                ]
+            },
+            { 
+                name: "松江南京", price: 285000, owner: null, rent: 2850, quiz: [
+                    { question: "松江南京站是哪兩條捷運路線的轉乘站？", options: ["松山新店線和中和新蘆線", "松山新店線和淡水信義線", "松山新店線和文湖線", "松山新店線和板南線"], correctAnswerIndex: 0, prize: 10000 },
+                    { question: "松江南京站周邊最著名的四面佛廟位於哪條路口？", options: ["松江路和南京東路", "松江路和長春路", "松江路和民生東路", "南京東路與伊通街"], correctAnswerIndex: 3, prize: 30000 },
+                    { question: "松江南京站的站名，是取自哪兩條主要道路的交會點？", options: ["松江路與南京東路", "松江路與南京西路", "南京東路與新生南路", "南京東路與林森北路"], correctAnswerIndex: 0, prize: 50000 }
+                ]
+            },
+            { name: "機會", price: null, owner: null, cardType: "chance" }, // 17
+            { 
+                name: "行天宮", price: 255000, owner: null, rent: 2550, quiz: [
+                    { question: "行天宮站的命名來源是？", options: ["行天宮", "行善宮", "行天宮圖書館", "行天宮醫院"], correctAnswerIndex: 0, prize: 10000 },
+                    { question: "行天宮站周邊最著名的宮廟，供奉哪位神明？", options: ["關聖帝君", "媽祖", "保生大帝", "城隍爺"], correctAnswerIndex: 0, prize: 30000 },
+                    { question: "行天宮站周邊的地下商場，曾以販賣何種商品聞名？", options: ["古董", "算命", "衣服", "美食"], correctAnswerIndex: 1, prize: 50000 }
+                ]
+            },
+            { name: "機會", price: null, owner: null, cardType: "chance" }, // 19
+            { 
+                name: "中山國小", price: 245000, owner: null, rent: 2450, quiz: [
+                    { question: "中山國小站位於哪一條捷運線上？", options: ["中和新蘆線", "文湖線", "松山新店線", "淡水信義線"], correctAnswerIndex: 0, prize: 10000 },
+                    { question: "中山國小站周邊最著名的地標，是一座大型的展覽場館，請問是？", options: ["花博公園", "台北國際會議中心", "圓山飯店", "台北市立美術館"], correctAnswerIndex: 0, prize: 30000 },
+                    { question: "中山國小站周邊的晴光市場，以哪種特色美食聞名？", options: ["滷肉飯", "蚵仔煎", "紅豆餅", "甜甜圈"], correctAnswerIndex: 3, prize: 50000 }
+                ]
+            },
+            { 
+                name: "民權西路", price: 235000, owner: null, rent: 2350, quiz: [
+                    { question: "民權西路站是哪兩條捷運路線的轉乘站？", options: ["中和新蘆線和淡水信義線", "松山新店線和淡水信義線", "板南線和淡水信義線", "文湖線和淡水信義線"], correctAnswerIndex: 0, prize: 10000 },
+                    { question: "民權西路站附近的中山區，以哪種特色聞名？", options: ["精品百貨", "美食夜市", "商務旅館", "文創園區"], correctAnswerIndex: 2, prize: 30000 },
+                    { question: "民權西路站的站名，是取自哪兩條主要道路的交會點？", options: ["民權東路與中山北路", "民權西路與中山北路", "民權西路與中山南路", "民權東路與中山南路"], correctAnswerIndex: 1, prize: 50000 }
+                ]
+            },
+            { 
+                name: "大橋頭", price: 200000, owner: null, rent: 2000, quiz: [
+                    { question: "大橋頭站位於哪一條捷運線上？", options: ["中和新蘆線", "淡水信義線", "松山新店線", "板南線"], correctAnswerIndex: 0, prize: 10000 },
+                    { question: "大橋頭站周邊最著名的景點是？", options: ["大稻埕碼頭", "大龍峒保安宮", "台北孔廟", "迪化街"], correctAnswerIndex: 3, prize: 30000 },
+                    { question: "大橋頭站的站名，是取自哪座橋樑的舊稱？", options: ["臺北橋", "重陽橋", "忠孝橋", "中正橋"], correctAnswerIndex: 0, prize: 50000 }
+                ]
+            },
+            { 
+                name: "臺北橋", price: 170000, owner: null, rent: 1700, quiz: [
+                    { question: "臺北橋站位於哪一條捷運線上？", options: ["中和新蘆線", "環狀線", "萬大線", "松山新店線"], correctAnswerIndex: 0, prize: 10000 },
+                    { question: "臺北橋站以哪一條橫跨淡水河的橋樑命名？", options: ["忠孝橋", "臺北橋", "中正橋", "重陽橋"], correctAnswerIndex: 1, prize: 30000 },
+                    { question: "臺北橋站附近最著名的夜市是？", options: ["三和夜市", "三民路夜市", "三重夜市", "重新夜市"], correctAnswerIndex: 0, prize: 50000 }
+                ]
+            },
+            { name: "機會", price: null, owner: null, cardType: "chance" }, // 24
+            { 
+                name: "菜寮", price: 150000, owner: null, rent: 1500, quiz: [
+                    { question: "菜寮站位於新北市哪一個行政區？", options: ["新莊區", "三重區", "蘆洲區", "板橋區"], correctAnswerIndex: 1, prize: 10000 },
+                    { question: "菜寮站的命名由來與早期居民在此處栽種何種作物有關？", options: ["稻米", "水果", "蔬菜", "花卉"], correctAnswerIndex: 2, prize: 30000 },
+                    { question: "菜寮站周邊的知名地標是？", options: ["新北市政府", "台北大橋", "三重體育場", "新北市政府警察局三重分局"], correctAnswerIndex: 3, prize: 50000 }
+                ]
+            },
+            { 
+                name: "三重", price: 160000, owner: null, rent: 1600, quiz: [
+                    { question: "三重站是哪兩條捷運路線的轉乘站？", options: ["中和新蘆線和環狀線", "中和新蘆線和桃園機場捷運", "中和新蘆線和板南線", "環狀線和桃園機場捷運"], correctAnswerIndex: 1, prize: 10000 },
+                    { question: "三重站附近哪一座公園是新北市最大的都會公園之一？", options: ["大都會公園", "幸福水漾公園", "微風運河公園", "新北大都會公園"], correctAnswerIndex: 3, prize: 30000 },
+                    { question: "三重站的站名，是取自清朝時期哪一位官員的官階？", options: ["巡撫", "總督", "知縣", "縣丞"], correctAnswerIndex: 3, prize: 50000 }
+                ]
+            },
+            { 
+                name: "先嗇宮", price: 150000, owner: null, rent: 1500, quiz: [
+                    { question: "先嗇宮站的命名來源是？", options: ["先嗇宮", "先嗇宮市場", "先嗇宮醫院", "先嗇宮圖書館"], correctAnswerIndex: 0, prize: 10000 },
+                    { question: "先嗇宮站周邊最著名的宮廟，供奉哪位神明？", options: ["神農大帝", "媽祖", "關聖帝君", "保生大帝"], correctAnswerIndex: 0, prize: 30000 },
+                    { question: "先嗇宮站所在的區域，是新北市哪個行政區的傳統重工業區？", options: ["板橋區", "新莊區", "三重區", "泰山區"], correctAnswerIndex: 1, prize: 50000 }
+                ]
+            }
+        ];
+        
+        let currentQuizQuestions = []; // 用於儲存當前格子的所有問題
+        let currentQuizIndex = 0; // 用於追蹤玩家回答到第幾題
+        let currentLandedSquareIndex = 0; // 用來儲存玩家停留的格子索引
+
+        /**
+         * 顯示訊息提示框
+         * @param {string} message - 要顯示的訊息
+         * @param {number} duration - 訊息顯示的時間 (毫秒)
+         */
+        function showMessage(message, duration = 3000) {
+            messageBox.textContent = message;
+            messageBox.classList.add('show');
+            
+            clearTimeout(window.messageTimeout);
+            window.messageTimeout = setTimeout(() => {
+                messageBox.classList.remove('show');
+            }, duration);
+        }
+
+        /**
+         * 更新玩家資訊顯示
+         */
+        function updatePlayerInfoDisplay() {
+            playerInfoContainer.innerHTML = '';
+            players.forEach((player, index) => {
+                const isActive = index === currentPlayerIndex ? ' active' : '';
+                const playerCard = document.createElement('div');
+                playerCard.className = `player-card${isActive}`;
+                playerCard.innerHTML = `
+                    <h4 class="text-sm font-semibold">${player.name}</h4>
+                    <p class="text-xs">資產: $${player.money.toLocaleString()}</p>
+                    <p class="text-xs">地產: ${player.properties} 塊</p>
+                `;
+                playerInfoContainer.appendChild(playerCard);
+            });
+        }
+
+
+        /**
+         * 獲取指定格子元素的邊界資訊
+         * @param {number} squareIndex - 格子的索引 (0-27)
+         * @returns {DOMRect} - 格子的 DOMRect 物件
+         */
+        function getSquareBounds(squareIndex) {
+            const squareId = `square-${squareIndex}`;
+            const squareElement = document.getElementById(squareId);
+            if (squareElement) {
+                return squareElement.getBoundingClientRect();
+            }
+            return null;
+        }
+
+        /**
+         * 更新玩家棋子的位置
+         * @param {object} player - 玩家物件 { id, position, element, color }
+         * @param {number} newPosition - 新的格子索引
+         */
+        function updatePlayerTokenPosition(player, newPosition) {
+            const tokenElement = player.element;
+            const boardContainer = document.querySelector('.game-board-container');
+            const boardRect = boardContainer.getBoundingClientRect();
+
+            const targetSquareBounds = getSquareBounds(newPosition);
+
+            if (targetSquareBounds) {
+                // 根據玩家索引調整棋子在格子內的偏移量，使其分佈在角落
+                let offsetX = 0;
+                let offsetY = 0;
+                const tokenWidth = tokenElement.offsetWidth;
+                const tokenHeight = tokenElement.offsetHeight;
+
+                // 計算棋子相對於目標格子左上角的偏移量
+                switch (player.index) {
+                    case 0: // Player 1: Top-left corner
+                        offsetX = 5;
+                        offsetY = 5;
+                        break;
+                    case 1: // Player 2: Top-right corner
+                        offsetX = targetSquareBounds.width - tokenWidth - 5;
+                        offsetY = 5;
+                        break;
+                    case 2: // Player 3: Bottom-left corner
+                        offsetX = 5;
+                        offsetY = targetSquareBounds.height - tokenHeight - 5;
+                        break;
+                    case 3: // Player 4: Bottom-right corner
+                        offsetX = targetSquareBounds.width - tokenWidth - 5;
+                        offsetY = targetSquareBounds.height - tokenHeight - 5;
+                        break;
+                }
+
+                // 計算棋子相對於遊戲板容器的最終位置
+                tokenElement.style.left = `${(targetSquareBounds.left - boardRect.left) + offsetX}px`;
+                tokenElement.style.top = `${(targetSquareBounds.top - boardRect.top) + offsetY}px`;
+            }
+        }
+        
+        // 結束玩家回合的函式
+        function endPlayerTurn() {
+            quizModal.classList.remove('show');
+            chanceModal.classList.remove('show');
+            purchaseModal.style.display = 'none';
+            currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+            updateTurnIndicator();
+            rollDiceButton.disabled = false;
+        }
+
+        // 處理機會卡
+        function handleChanceCard() {
+            const currentPlayer = players[currentPlayerIndex];
+            const randomIndex = Math.floor(Math.random() * chanceCards.length);
+            const card = chanceCards[randomIndex];
+
+            chanceText.textContent = card.text;
+            chanceModal.classList.add('show');
+
+            chanceOkButton.onclick = () => {
+                switch (card.type) {
+                    case "gainMoney":
+                        currentPlayer.money += card.value;
+                        showMessage(`玩家 ${currentPlayerIndex + 1} 獲得 $${card.value.toLocaleString()}！`, 5000);
+                        break;
+                    case "loseMoney":
+                        currentPlayer.money -= card.value;
+                        showMessage(`玩家 ${currentPlayerIndex + 1} 支付 $${card.value.toLocaleString()}！`, 5000);
+                        break;
+                    case "payPerPlayer":
+                        players.forEach((player, index) => {
+                            if (index !== currentPlayerIndex) {
+                                currentPlayer.money -= card.value;
+                                player.money += card.value;
+                            }
+                        });
+                        showMessage(`玩家 ${currentPlayerIndex + 1} 向其他玩家各支付 $${card.value.toLocaleString()}！`, 5000);
+                        break;
+                    case "collectFromPlayers":
+                        players.forEach((player, index) => {
+                            if (index !== currentPlayerIndex) {
+                                player.money -= card.value;
+                                currentPlayer.money += card.value;
+                            }
+                        });
+                        showMessage(`玩家 ${currentPlayerIndex + 1} 向其他玩家各收取 $${card.value.toLocaleString()}！`, 5000);
+                        break;
+                    case "moveToPosition":
+                        currentPlayer.position = card.value;
+                        updatePlayerTokenPosition(currentPlayer, currentPlayer.position);
+                        showMessage(`玩家 ${currentPlayerIndex + 1} 移動到 ${squaresData[card.value].name}！`, 5000);
+                        break;
+                    case "moveToPositionAndGain":
+                        currentPlayer.position = card.value;
+                        currentPlayer.money += card.prize;
+                        updatePlayerTokenPosition(currentPlayer, currentPlayer.position);
+                        showMessage(`玩家 ${currentPlayerIndex + 1} 移動到 ${squaresData[card.value].name} 並獲得 $${card.prize.toLocaleString()}！`, 5000);
+                        break;
+                    case "moveBack":
+                        let newPositionBack = currentPlayer.position - card.value;
+                        if (newPositionBack < 0) {
+                             newPositionBack = totalSquares + newPositionBack;
+                        }
+                        currentPlayer.position = newPositionBack;
+                        updatePlayerTokenPosition(currentPlayer, currentPlayer.position);
+                        showMessage(`玩家 ${currentPlayerIndex + 1} 後退 ${card.value} 格！`, 5000);
+                        break;
+                    case "moveForward":
+                        currentPlayer.position = (currentPlayer.position + card.value) % totalSquares;
+                        updatePlayerTokenPosition(currentPlayer, currentPlayer.position);
+                        showMessage(`玩家 ${currentPlayerIndex + 1} 前進 ${card.value} 格！`, 5000);
+                        break;
+                }
+                updatePlayerInfoDisplay();
+                setTimeout(endPlayerTurn, 5000); // 延遲結束回合
+            };
+        }
+
+
+        /**
+         * 處理答題邏輯 - 顯示問題並處理答案
+         * @param {object} questionData - 當前問題資料
+         * @param {number} questionIndex - 問題索引
+         */
+        function handleSingleQuiz(questionData, questionIndex) {
+            const currentPlayer = players[currentPlayerIndex];
+
+            // 顯示 Modal
+            quizModal.classList.add('show');
+            quizQuestionText.textContent = `問題 ${questionIndex + 1}：${questionData.question}`;
+            quizPrizeText.textContent = `答對獎金：$${questionData.prize.toLocaleString()}`;
+            answerButtonsContainer.innerHTML = '';
+
+            // 生成答案按鈕
+            questionData.options.forEach((option, index) => {
+                const button = document.createElement('button');
+                button.className = 'answer-button';
+                button.textContent = option;
+                button.addEventListener('click', () => {
+                    // 禁用所有按鈕和跳過按鈕
+                    Array.from(answerButtonsContainer.children).forEach(btn => btn.disabled = true);
+                    skipQuizButton.disabled = true;
+
+                    if (index === questionData.correctAnswerIndex) {
+                        // 答對了
+                        button.classList.add('correct');
+                        const prize = questionData.prize;
+                        currentPlayer.money += prize;
+                        showMessage(`恭喜你答對了！獲得獎金 $${prize.toLocaleString()}！`, 5000);
+                    } else {
+                        // 答錯了
+                        button.classList.add('incorrect');
+                        // 顯示正確答案
+                        answerButtonsContainer.children[questionData.correctAnswerIndex].classList.add('correct');
+                        showMessage('答錯了，真可惜。', 5000);
+                    }
+
+                    // 更新玩家金錢顯示
+                    updatePlayerInfoDisplay();
+
+                    // 延遲一段時間後處理下一個問題
+                    setTimeout(nextQuizQuestion, 4000);
+                });
+                answerButtonsContainer.appendChild(button);
+            });
+            
+            // 處理跳過按鈕
+            skipQuizButton.disabled = false;
+            skipQuizButton.onclick = () => {
+                 showMessage('你選擇跳過此題。', 3000);
+                 setTimeout(nextQuizQuestion, 3000);
+            };
+        }
+
+        // 處理下一個問題或結束回合
+        function nextQuizQuestion() {
+            currentQuizIndex++;
+            if (currentQuizIndex < currentQuizQuestions.length) {
+                handleSingleQuiz(currentQuizQuestions[currentQuizIndex], currentQuizIndex);
+            } else {
+                // 所有問題都回答完畢
+                quizModal.classList.remove('show');
+                // 檢查是否可以購買房產 (只在未被擁有的地產上才會彈出購買框)
+                const landedSquare = squaresData[currentLandedSquareIndex];
+                if (landedSquare.owner === null) {
+                    handlePropertyPurchase();
+                } else {
+                    // 如果是答題完畢，且地產有主人，直接結束回合
+                    endPlayerTurn();
+                }
+            }
+        }
+
+        // 處理購地邏輯
+        function handlePropertyPurchase() {
+            const currentPlayer = players[currentPlayerIndex];
+            const landedSquare = squaresData[currentLandedSquareIndex];
+            const propertyPrice = landedSquare.price;
+
+            purchaseModal.style.display = 'flex';
+            purchaseTitle.textContent = `是否購買 ${landedSquare.name}？`;
+            purchaseInfo.textContent = `你的目前資產：$${currentPlayer.money.toLocaleString()}`;
+            purchasePrice.textContent = `價格：$${propertyPrice.toLocaleString()}`;
+
+            // 檢查玩家是否有足夠的錢
+            if (currentPlayer.money < propertyPrice) {
+                buyButton.disabled = true;
+                purchaseInfo.textContent = `你的資產不足！需要 $${propertyPrice.toLocaleString()}。`;
+                showMessage(`玩家 ${currentPlayerIndex + 1} 資產不足，無法購買 ${landedSquare.name}。`, 5000);
+            } else {
+                buyButton.disabled = false;
+            }
+
+            buyButton.onclick = () => {
+                if (currentPlayer.money >= propertyPrice) {
+                    currentPlayer.money -= propertyPrice;
+                    landedSquare.owner = currentPlayerIndex; // 設定地產主人
+                    currentPlayer.properties++; // 增加玩家的地產數量
+                    updateSquareOwnershipDisplay(currentLandedSquareIndex, currentPlayerIndex);
+                    updatePlayerInfoDisplay();
+                    purchaseModal.style.display = 'none';
+                    showMessage(`玩家 ${currentPlayerIndex + 1} 成功購買了 ${landedSquare.name}！`, 5000);
+                    setTimeout(endPlayerTurn, 5000);
+                }
+            };
+
+            cancelButton.onclick = () => {
+                purchaseModal.style.display = 'none';
+                showMessage(`玩家 ${currentPlayerIndex + 1} 放棄購買 ${landedSquare.name}。`, 5000);
+                setTimeout(endPlayerTurn, 5000);
+            };
+        }
+
+        // 更新地產格子的外觀以顯示主人
+        function updateSquareOwnershipDisplay(squareIndex, ownerIndex) {
+            const squareElement = document.getElementById(`square-${squareIndex}`);
+            const ownerColorClass = players[ownerIndex].color.replace('player-', 'owned-by-player-');
+            squareElement.classList.add(ownerColorClass);
+        }
+
+        /**
+         * 更新回合指示器顯示
+         */
+        function updateTurnIndicator() {
+            updatePlayerInfoDisplay();
+            const currentPlayer = players[currentPlayerIndex];
+            const currentPlayerCard = document.querySelector(`.player-card:nth-child(${currentPlayerIndex + 1})`);
+            
+            // 移除所有玩家卡片的 active 樣式
+            Array.from(playerInfoContainer.children).forEach(card => card.classList.remove('active'));
+            // 為當前玩家卡片添加 active 樣式
+            if (currentPlayerCard) {
+                currentPlayerCard.classList.add('active');
+            }
+
+            showMessage(`現在是玩家 ${currentPlayerIndex + 1} 的回合`, 3000);
+        }
+
+        /**
+         * 擲骰子並移動玩家
+         */
+        function rollDiceAndMovePlayer() {
+            if (rollDiceButton.disabled) {
+                showMessage("請等待你的回合。", 2000);
+                return;
+            }
+
+            rollDiceButton.disabled = true; // 禁用按鈕防止重複點擊
+
+            const currentPlayer = players[currentPlayerIndex];
+            showMessage(`玩家 ${currentPlayerIndex + 1} 擲骰子中...`);
+
+            // 生成兩顆骰子點數
+            const dice1 = Math.floor(Math.random() * 6) + 1;
+            const dice2 = Math.floor(Math.random() * 6) + 1;
+            const totalDiceRoll = dice1 + dice2;
+
+            diceResultDisplay.textContent = `擲出: ${dice1} + ${dice2} = ${totalDiceRoll} 點`;
+
+            // 計算新的位置
+            const oldPosition = currentPlayer.position;
+            const newPosition = (currentPlayer.position + totalDiceRoll) % totalSquares;
+            
+            // 模擬玩家移動動畫
+            let currentStep = 0;
+            const moveInterval = setInterval(() => {
+                currentStep++;
+                if (currentStep <= totalDiceRoll) { // 使用總和來決定動畫步數
+                    const intermediatePosition = (oldPosition + currentStep) % totalSquares;
+                    updatePlayerTokenPosition(currentPlayer, intermediatePosition);
+                } else {
+                    clearInterval(moveInterval);
+                    // 最終位置確認
+                    currentPlayer.position = newPosition;
+                    updatePlayerTokenPosition(currentPlayer, currentPlayer.position);
+                    currentLandedSquareIndex = currentPlayer.position; // 儲存當前停留的格子索引
+
+                    const landedSquare = squaresData[currentLandedSquareIndex];
+                    
+                    // 檢查地產所有權與租金機制
+                    if (landedSquare.owner !== null && landedSquare.owner !== currentPlayerIndex && isRentEnabled) {
+                        // 如果有開啟租金功能，則支付租金並結束回合
+                        const owner = players[landedSquare.owner];
+                        const rent = landedSquare.rent;
+                        
+                        if (currentPlayer.money < rent) {
+                            showMessage(`玩家 ${currentPlayerIndex + 1} 資產不足，無法支付 ${landedSquare.name} 的租金！`, 5000);
+                            // 破產機制可以寫在這裡
+                            setTimeout(endPlayerTurn, 5000);
+                        } else {
+                            currentPlayer.money -= rent;
+                            owner.money += rent;
+                            updatePlayerInfoDisplay();
+                            showMessage(`玩家 ${currentPlayerIndex + 1} 停在 ${landedSquare.name}，向 ${owner.name} 支付租金 $${rent.toLocaleString()}！`, 5000);
+                            setTimeout(endPlayerTurn, 5000);
+                        }
+                    } else if (landedSquare.cardType === 'chance') {
+                        // 處理機會卡
+                        showMessage(`玩家 ${currentPlayerIndex + 1} 停在 ${landedSquare.name}，抽取機會卡！`, 5000);
+                        setTimeout(handleChanceCard, 5000);
+                    } else if (landedSquare.quiz && landedSquare.quiz.length > 0) {
+                        // 處理答題 (包含未被擁有或租金功能關閉的情況)
+                        const landedMessage = landedSquare.owner !== null 
+                            ? `玩家 ${currentPlayerIndex + 1} 停在 ${landedSquare.name}，租金已關閉，請準備答題！` 
+                            : `玩家 ${currentPlayerIndex + 1} 停在 ${landedSquare.name}，請準備答題！`;
+
+                        showMessage(landedMessage, 5000);
+                        currentQuizQuestions = landedSquare.quiz;
+                        currentQuizIndex = 0;
+                        setTimeout(() => handleSingleQuiz(currentQuizQuestions[currentQuizIndex], currentQuizIndex), 5000);
+                    } else {
+                         // 否則，直接切換到下一個玩家的回合
+                         showMessage(`玩家 ${currentPlayerIndex + 1} 停在 ${landedSquare.name}`, 5000);
+                         setTimeout(endPlayerTurn, 5000);
+                    }
+                }
+            }, 200); // 每 200 毫秒移動一步
+        }
+
+        // 聊天訊息傳送功能
+        sendChatButton.addEventListener('click', () => {
+            const message = chatInput.value.trim();
+            if (message) {
+                const msgElement = document.createElement('p');
+                msgElement.textContent = `玩家${currentPlayerIndex + 1}: ${message}`; 
+                chatMessages.appendChild(msgElement);
+                chatMessages.scrollTop = chatMessages.scrollHeight; // 捲動到最底部
+                chatInput.value = ''; // 清空輸入框
+                showMessage(`玩家${currentPlayerIndex + 1} 發送了訊息`, 2000);
+            }
+        });
+
+        // 監聽聊天輸入框的 Enter 鍵
+        chatInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                sendChatButton.click();
+            }
+        });
+        
+        // 監聽租金開關
+        rentToggle.addEventListener('change', (e) => {
+            isRentEnabled = e.target.checked;
+            if (isRentEnabled) {
+                showMessage("已開啟租金支付功能。", 3000);
+            } else {
+                showMessage("已關閉租金支付功能。", 3000);
+            }
+        });
+
+
+        // 初始化所有玩家棋子位置
+        window.onload = () => {
+            players.forEach((player, index) => {
+                player.element = document.getElementById(player.id);
+                player.index = index; // 記錄玩家索引，用於微調位置
+                updatePlayerTokenPosition(player, player.position);
+            });
+            updateTurnIndicator(); // 初始化回合指示器
+        };
+
+        // 監聽擲骰子按鈕點擊事件
+        rollDiceButton.addEventListener('click', rollDiceAndMovePlayer);
+
+        // 監聽視窗大小改變事件，重新定位棋子以適應響應式佈局
+        window.addEventListener('resize', () => {
+            players.forEach(player => {
+                updatePlayerTokenPosition(player, player.position);
+            });
+        });
+    </script>
+</body>
+</html>
